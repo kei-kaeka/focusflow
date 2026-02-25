@@ -278,6 +278,27 @@
   .scroll-area { overflow-y: auto; flex: 1; }
   .scroll-area::-webkit-scrollbar { width: 3px; }
   .scroll-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── ASSIGNEE BAR（委任タスク担当者表示） ── */
+  .assignee-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+  .assignee-icon {
+    font-size: 11px;
+    color: var(--accent3);
+    font-weight: bold;
+  }
+  .assignee-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--accent3);
+    text-transform: uppercase;
+  }
 </style>
 </head>
 <body>
@@ -386,6 +407,7 @@
     </div>
     <div class="triage-actions">
       <button class="btn-ghost" onclick="deleteTask(currentEditId);closeModal()">🗑 削除</button>
+      <button class="btn-ghost" id="modal-complete-btn" onclick="completeFromModal()" style="border-color:var(--accent);color:var(--accent)">✓ 完了</button>
       <button class="btn-primary" onclick="saveEdit()">保存</button>
     </div>
   </div>
@@ -654,17 +676,28 @@ function renderTaskCard(task) {
   const t    = today();
   const dl   = task.deadline;
   const diff = diffDays(dl);
-  let tags   = '';
 
-  if (task.type === 'delegated') {
-    tags += `<span class="tag tag-delegated">委任</span>`;
-    if (task.assignee) tags += `<span class="tag tag-assignee">→ ${escHtml(task.assignee)}</span>`;
-  }
+  // ── 担当者バー（委任タスクのみ）
+  const assigneeBar = task.type === 'delegated'
+    ? `<div class="assignee-bar">
+        <span class="assignee-icon">→</span>
+        <span class="assignee-name">${task.assignee ? escHtml(task.assignee) : '担当者未設定'}</span>
+       </div>`
+    : '';
+
+  // ── タグ行
+  let tags = '';
   if (!task.completed && dl) {
     if      (dl < t)                     tags += `<span class="tag tag-overdue">⚠ 期限切れ ${formatDate(dl)}</span>`;
     else if (dl === t)                   tags += `<span class="tag tag-today">期限 今日</span>`;
     else if (diff !== null && diff <= 3) tags += `<span class="tag tag-soon">期限 ${formatDate(dl)}（あと${diff}日）</span>`;
     else                                 tags += `<span class="tag tag-plain">期限 ${formatDate(dl)}</span>`;
+  }
+  if (task.completed && dl) {
+    tags += `<span class="tag tag-plain">期限 ${formatDate(dl)}</span>`;
+  }
+  if (!task.completed && task.type === 'mine' && task.scheduled && task.scheduled !== t) {
+    tags += `<span class="tag tag-plain">予定 ${formatDate(task.scheduled)}</span>`;
   }
   if (!task.completed && task.createdAt && (Date.now()-task.createdAt > 14*86400000) && dl && dl < t) {
     tags += `<span class="tag tag-stale">要確認</span>`;
@@ -678,13 +711,14 @@ function renderTaskCard(task) {
   ].filter(Boolean).join(' ');
 
   const checkCls     = `check-btn${task.completed ? ' done' : ''}`;
-  const checkOnclick = task.type !== 'delegated' ? `onclick="toggleComplete('${task.id}')"` : '';
-  const checkStyle   = task.type === 'delegated' ? 'style="opacity:0.3;cursor:default"' : '';
+  // 委任タスクもチェックで完了できるようにする
+  const checkOnclick = `onclick="toggleComplete('${task.id}')"`;
 
   return `
   <div class="${cls}" id="card-${task.id}">
-    <button class="${checkCls}" ${checkOnclick} ${checkStyle}></button>
+    <button class="${checkCls}" ${checkOnclick}></button>
     <div class="task-body">
+      ${assigneeBar}
       <div class="task-title">${escHtml(task.title)}</div>
       ${tags ? `<div class="task-meta">${tags}</div>` : ''}
     </div>
@@ -719,9 +753,25 @@ function openEdit(id) {
   document.getElementById('modal-scheduled-wrap').style.display = isDelegate ? 'none'  : 'block';
   if (isDelegate) document.getElementById('modal-assignee').value = task.assignee || '';
   else            document.getElementById('modal-scheduled').value = task.scheduled || '';
+  // 完了ボタンのラベルを状態に合わせて切り替え
+  const completeBtn = document.getElementById('modal-complete-btn');
+  completeBtn.textContent = task.completed ? '↩ 未完了に戻す' : '✓ 完了にする';
+  completeBtn.style.borderColor = task.completed ? 'var(--text3)' : 'var(--accent)';
+  completeBtn.style.color       = task.completed ? 'var(--text3)' : 'var(--accent)';
   document.getElementById('modal').classList.add('open');
 }
 function closeModal() { document.getElementById('modal').classList.remove('open'); currentEditId = null; }
+function completeFromModal() {
+  const task = tasks.find(t => t.id === currentEditId);
+  if (!task) return;
+  task.completed     = !task.completed;
+  task.completedDate = task.completed ? today() : null;
+  task.rolledOver    = false;
+  save();
+  if (task.completed) { spawnConfetti(); showBanner('完了！ 🎉'); }
+  else { showBanner('未完了に戻しました'); }
+  closeModal(); renderCurrent();
+}
 function saveEdit() {
   const task = tasks.find(t => t.id === currentEditId);
   if (!task) return;
