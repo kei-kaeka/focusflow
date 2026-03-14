@@ -304,7 +304,7 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sbFetch = async (method, table, body, query='') => {
   const r = await fetch(`${SB_URL}/rest/v1/${table}${query}`, {
     method,
-    headers: { 'apikey':SB_KEY, 'Authorization':`Bearer ${SB_KEY}`, 'Content-Type':'application/json', 'Prefer': method==='POST'?'return=representation':'return=minimal' },
+    headers: { 'apikey':SB_KEY, 'Authorization':`Bearer ${SB_KEY}`, 'Content-Type':'application/json', 'Prefer': method==='POST'?'return=representation, resolution=merge-duplicates':'return=minimal' },
     body: body ? JSON.stringify(body) : null
   });
   if (!r.ok) throw new Error(await r.text());
