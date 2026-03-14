@@ -1,4 +1,4 @@
-const CACHE_NAME = 'focusflow-v2';
+const CACHE_NAME = 'focusflow-v3';
 const urlsToCache = ['./index.html', './sw.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
