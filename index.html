@@ -595,6 +595,7 @@ async function saveEdit() {
   task.memo=document.getElementById('modal-memo').value.trim();
   if(task.type==='delegated') task.assignee=document.getElementById('modal-assignee').value.trim()||null;
   else task.scheduled=document.getElementById('modal-scheduled').value||null;
+  task.rolledOver=false;
   closeModal(); renderCurrent();
   try{await db.upsertTask(task);setSync('ok');}catch(e){setSync('err');}
   showBanner('変更を保存しました ✓');
