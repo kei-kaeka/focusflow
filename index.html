@@ -594,7 +594,11 @@ async function saveEdit() {
   task.deadline=document.getElementById('modal-deadline').value||null;
   task.memo=document.getElementById('modal-memo').value.trim();
   if(task.type==='delegated') task.assignee=document.getElementById('modal-assignee').value.trim()||null;
-  else task.scheduled=document.getElementById('modal-scheduled').value||null;
+  else {
+    task.scheduled=document.getElementById('modal-scheduled').value||null;
+    if(task.deadline&&task.deadline>today()&&(!task.scheduled||task.scheduled<=today()))
+      task.scheduled=task.deadline;
+  }
   task.rolledOver=false;
   closeModal(); renderCurrent();
   try{await db.upsertTask(task);setSync('ok');}catch(e){setSync('err');}
